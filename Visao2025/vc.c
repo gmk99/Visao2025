@@ -1,6 +1,9 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "vc.h"
+
+#define M_PI 3.14159265358979323846
 
 
 #define MAX_LABELS 10000
@@ -45,18 +48,17 @@ void vc_rgb_to_gray(IVC* image, unsigned char* gray) {
     }
 }
 
-
-
 int vc_gray_to_binary(IVC* src, IVC* dst, int threshold) {
     if (src == NULL || dst == NULL || src->channels != 1 || dst->channels != 1)
         return 0;
 
     for (int i = 0; i < src->width * src->height; i++) {
-        dst->data[i] = (src->data[i] >= threshold) ? 255 : 0;
+        dst->data[i] = (src->data[i] >= threshold) ? 0 : 255;
     }
 
     return 1;
 }
+
 
 
 
@@ -94,24 +96,4 @@ int vc_image_free(IVC* image)
         return 1;
     }
     return 0;
-}
-
-
-
-int vc_rgb_get_green(IVC* image)
-{
-    if (image == NULL || image->data == NULL || image->channels != 3)
-        return 0;
-
-    int x, y;
-    for (y = 0; y < image->height; y++)
-    {
-        for (x = 0; x < image->width; x++)
-        {
-            int pos = (y * image->width + x) * 3;
-            image->data[pos + 0] = image->data[pos + 1]; // Red <- Green
-            image->data[pos + 2] = image->data[pos + 1]; // Blue <- Green
-        }
-    }
-    return 1;
 }

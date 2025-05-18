@@ -129,27 +129,40 @@ int main(void) {
 
         // Cria imagem binária
         IVC* image_bin = vc_image_new(video.width, video.height, 1, 255);
-        vc_gray_to_binary(image_gray, image_bin, 100); // Você pode mudar o threshold
+        vc_gray_to_binary(image_gray, image_bin, 110); // threshold
 
-        // Cria um cv::Mat para exibir a imagem binária
-        cv::Mat frame_bin(video.height, video.width, CV_8UC1, image_bin->data);
+        // Cria imagem para blur
+        IVC* image_blur = vc_image_new(video.width, video.height, 1, 255);
 
-        // Exibe a imagem binária
-        cv::imshow("VC - VIDEO BINARIO", frame_bin);
+        // Convert IVC binary image to cv::Mat
+        cv::Mat mat_bin(video.height, video.width, CV_8UC1, image_bin->data);
+
+        // Aplica blur
+        
+        cv::GaussianBlur(mat_bin, mat_bin, cv::Size(15, 15), 4.0);
+
+        // Opcional: re-binarizar se necessário
+        cv::threshold(mat_bin, mat_bin, 100, 255, cv::THRESH_BINARY);
+
+        // Copia de volta para image_blur
+        memcpy(image_blur->data, mat_bin.data, video.width* video.height);
+
+      
 
         // Libera memória
         vc_image_free(image_rgb);
         vc_image_free(image_gray);
         vc_image_free(image_bin);
 
-
         // +++++++++++++++++++++++++
 
-        // Exibe a frame 
+        // Exibe a frame
+        cv::Mat frame_blur(video.height, video.width, CV_8UC1, image_blur->data);
+        cv::imshow("Imagem Borrada", frame_blur);
         cv::imshow("VC - VIDEO", frame);
 
         // Sai da aplica��o, se o utilizador premir a tecla 'q'
-        key = cv::waitKey(1);
+        key = cv::waitKey(100);
 
 
 
