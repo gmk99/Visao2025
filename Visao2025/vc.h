@@ -25,6 +25,14 @@ extern "C"
     // Exemplo de função: extrai o canal verde de uma imagem RGB
     int vc_rgb_get_green(IVC* image);
 
+
+
+
+    void vc_rgb_to_gray(IVC* image, unsigned char* gray);
+    int vc_gray_to_binary(IVC* src, IVC* dst, int threshold);
+
+
+
 #ifdef __cplusplus
 }
 #endif

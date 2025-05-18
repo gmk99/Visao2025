@@ -106,6 +106,7 @@ int main(void) {
 
         // Fa�a o seu c�digo aqui...
 
+        /*
         // Cria uma nova imagem IVC
         IVC *image = vc_image_new(video.width, video.height, 3, 256);
         // Copia dados de imagem da estrutura cv::Mat para uma estrutura IVC
@@ -116,14 +117,44 @@ int main(void) {
         memcpy(frame.data, image->data, video.width * video.height * 3);
         // Liberta a mem�ria da imagem IVC que havia sido criada
         vc_image_free(image);
+        */
+
+        // Cria imagem IVC (RGB)
+        IVC* image_rgb = vc_image_new(video.width, video.height, 3, 255);
+        memcpy(image_rgb->data, frame.data, video.width* video.height * 3);
+
+        // Cria imagem grayscale
+        IVC* image_gray = vc_image_new(video.width, video.height, 1, 255);
+        vc_rgb_to_gray(image_rgb, image_gray->data);
+
+        // Cria imagem binária
+        IVC* image_bin = vc_image_new(video.width, video.height, 1, 255);
+        vc_gray_to_binary(image_gray, image_bin, 100); // Você pode mudar o threshold
+
+        // Cria um cv::Mat para exibir a imagem binária
+        cv::Mat frame_bin(video.height, video.width, CV_8UC1, image_bin->data);
+
+        // Exibe a imagem binária
+        cv::imshow("VC - VIDEO BINARIO", frame_bin);
+
+        // Libera memória
+        vc_image_free(image_rgb);
+        vc_image_free(image_gray);
+        vc_image_free(image_bin);
+
 
         // +++++++++++++++++++++++++
 
-        /* Exibe a frame */
+        // Exibe a frame 
         cv::imshow("VC - VIDEO", frame);
 
-        /* Sai da aplica��o, se o utilizador premir a tecla 'q' */
+        // Sai da aplica��o, se o utilizador premir a tecla 'q'
         key = cv::waitKey(1);
+
+
+
+
+
     }
 
     /* Para o timer e exibe o tempo decorrido */

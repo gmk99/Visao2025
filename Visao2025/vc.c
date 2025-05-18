@@ -3,6 +3,9 @@
 #include "vc.h"
 
 
+#define MAX_LABELS 10000
+
+
 /* Structs for coin color ranges */
 typedef struct {
     int r_min, g_min, b_min;
@@ -41,6 +44,20 @@ void vc_rgb_to_gray(IVC* image, unsigned char* gray) {
         gray[i] = (unsigned char)((0.299 * r) + (0.587 * g) + (0.114 * b));
     }
 }
+
+
+
+int vc_gray_to_binary(IVC* src, IVC* dst, int threshold) {
+    if (src == NULL || dst == NULL || src->channels != 1 || dst->channels != 1)
+        return 0;
+
+    for (int i = 0; i < src->width * src->height; i++) {
+        dst->data[i] = (src->data[i] >= threshold) ? 255 : 0;
+    }
+
+    return 1;
+}
+
 
 
 
