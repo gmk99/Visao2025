@@ -105,6 +105,7 @@ int main(void) {
 
 
         // Fa�a o seu c�digo aqui...
+
         /*
         // Cria uma nova imagem IVC
         IVC *image = vc_image_new(video.width, video.height, 3, 256);
@@ -118,42 +119,44 @@ int main(void) {
         vc_image_free(image);
         */
 
+        // Cria imagem IVC (RGB)
+        IVC* image_rgb = vc_image_new(video.width, video.height, 3, 255);
+        memcpy(image_rgb->data, frame.data, video.width * video.height * 3);
 
-        IVC* image = vc_image_new(video.width, video.height, 3, 256);
-        IVC* edges_img = vc_image_new(video.width, video.height, 3, 256);
-        unsigned char* edges = (unsigned char*)malloc(video.width * video.height);
+        // Cria imagem grayscale
+        IVC* image_gray = vc_image_new(video.width, video.height, 1, 255);
+        vc_rgb_to_gray(image_rgb, image_gray->data);
 
-        while (key != 'q') {
-            capture.read(frame);
-            if (frame.empty()) break;
+        // Cria imagem binária
+        IVC* image_bin = vc_image_new(video.width, video.height, 1, 255);
+        vc_gray_to_binary(image_gray, image_bin, 110); // threshold
 
-            memcpy(image->data, frame.data, video.width * video.height * 3);
+        // Cria imagem para blur
+        IVC* image_blur = vc_image_new(video.width, video.height, 1, 255);
+        vc_gaussian_blur(image_bin, image_blur, 15, 4.0);
+        vc_gray_to_binary(image_blur, image_blur, 110); // threshold
+        
+        
 
-            vc_sobel_edges(image, edges);
-            edges_to_image(edges_img, edges);
-
-            // Copy edges image data to cv::Mat to display
-            memcpy(frame.data, edges_img->data, video.width * video.height * 3);
-
-            cv::imshow("Edges", frame);
-
-            key = cv::waitKey(1);
-        }
-
-        free(edges);
-        vc_image_free(image);
-
-
-
-
+        // Libera memória
+        vc_image_free(image_rgb);
+        vc_image_free(image_gray);
+        vc_image_free(image_bin);
 
         // +++++++++++++++++++++++++
 
-        /* Exibe a frame */
-        //           cv::imshow("VC - VIDEO", frame);
+        // Exibe a frame
+        cv::Mat frame_blur(video.height, video.width, CV_8UC1, image_blur->data);
+        cv::imshow("Imagem Borrada", frame_blur);
+        cv::imshow("VC - VIDEO", frame);
 
-        /* Sai da aplica��o, se o utilizador premir a tecla 'q' */
-        //           key = cv::waitKey(1);
+        // Sai da aplica��o, se o utilizador premir a tecla 'q'
+        key = cv::waitKey(1);
+
+
+
+
+
     }
 
     /* Para o timer e exibe o tempo decorrido */
