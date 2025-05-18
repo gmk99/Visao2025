@@ -31,6 +31,11 @@ CoinType coins[NUM_COINS] = {
     {"2eur",{100, 100, 100, 150, 150, 150}}
 };
 
+
+#meow meow ez
+
+
+
 /** ====================================================== DANGER ZONE ====================================================== */
 
 // Converte imagem RGB para escala de cinza (grayscale)
