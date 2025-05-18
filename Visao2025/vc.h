@@ -35,9 +35,7 @@ extern "C"
 
     void vc_rgb_to_gray(IVC* image, unsigned char* gray);
     int vc_gray_to_binary(IVC* src, IVC* dst, int threshold);
-
-
-
+    int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma);
 
 #ifdef __cplusplus
 }

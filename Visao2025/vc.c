@@ -63,6 +63,74 @@ int vc_gray_to_binary(IVC* src, IVC* dst, int threshold) {
 
 
 
+
+
+
+// --- Apply 2D convolution (zero‐padding) on single‐channel 8‑bit image ---
+int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
+    if (!src || !dst) return 0;
+    if (src->channels != 1 || dst->channels != 1) return 0;
+    if (src->width != dst->width || src->height != dst->height) return 0;
+    if (ksize % 2 == 0 || ksize < 3) return 0;  // kernel must be odd ≥3
+
+    int w = src->width, h = src->height, n = w * h;
+    int half = ksize / 2;
+
+    // build & normalize 2D Gaussian kernel
+    float* kernel = malloc(ksize * ksize * sizeof(float));
+    if (!kernel) return 0;
+    float sum = 0.0f, s2 = 2.0f * sigma * sigma;
+    for (int y = -half; y <= half; y++) {
+        for (int x = -half; x <= half; x++) {
+            float v = expf(-(x * x + y * y) / s2) / (M_PI * s2);
+            kernel[(y + half) * ksize + (x + half)] = v;
+            sum += v;
+        }
+    }
+    for (int i = 0; i < ksize * ksize; i++) {
+        kernel[i] /= sum;
+    }
+
+    // allocate temp if in-place
+    unsigned char* tmp = NULL;
+    unsigned char* out = dst->data;
+    if (src == dst) {
+        tmp = malloc(n);
+        if (!tmp) { free(kernel); return 0; }
+        out = tmp;
+    }
+
+    // convolve (zero‑padding)
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            float acc = 0.0f;
+            for (int ky = -half; ky <= half; ky++) {
+                int yy = y + ky;
+                if (yy < 0 || yy >= h) continue;
+                for (int kx = -half; kx <= half; kx++) {
+                    int xx = x + kx;
+                    if (xx < 0 || xx >= w) continue;
+                    float kval = kernel[(ky + half) * ksize + (kx + half)];
+                    acc += kval * src->data[yy * w + xx];
+                }
+            }
+            int iv = (int)(acc + 0.5f);
+            out[y * w + x] = (unsigned char)(iv < 0 ? 0 : (iv > 255 ? 255 : iv));
+        }
+    }
+
+    // if we blurred into tmp, copy back
+    if (tmp) {
+        memcpy(dst->data, tmp, n);
+        free(tmp);
+    }
+
+    free(kernel);
+    return 1;
+}
+
+
+
 /** ========================================================================================================================= */
 
 IVC* vc_image_new(int width, int height, int channels, int levels)
