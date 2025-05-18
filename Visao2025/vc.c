@@ -1,7 +1,12 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#include <math.h>
 #include "vc.h"
+
+#define M_PI 3.14159265358979323846
+
+
+#define MAX_LABELS 10000
 
 
 /* Structs for coin color ranges */
@@ -31,11 +36,6 @@ CoinType coins[NUM_COINS] = {
     {"2eur",{100, 100, 100, 150, 150, 150}}
 };
 
-
-#meow meow ez
-
-
-
 /** ====================================================== DANGER ZONE ====================================================== */
 
 // Converte imagem RGB para escala de cinza (grayscale)
@@ -46,6 +46,87 @@ void vc_rgb_to_gray(IVC* image, unsigned char* gray) {
         int b = image->data[3 * i + 2];
         gray[i] = (unsigned char)((0.299 * r) + (0.587 * g) + (0.114 * b));
     }
+}
+
+int vc_gray_to_binary(IVC* src, IVC* dst, int threshold) {
+    if (src == NULL || dst == NULL || src->channels != 1 || dst->channels != 1)
+        return 0;
+
+    for (int i = 0; i < src->width * src->height; i++) {
+        dst->data[i] = (src->data[i] >= threshold) ? 0 : 255;
+    }
+
+    return 1;
+}
+
+
+
+
+
+
+
+
+// --- Apply 2D convolution (zero‐padding) on single‐channel 8‑bit image ---
+int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
+    if (!src || !dst) return 0;
+    if (src->channels != 1 || dst->channels != 1) return 0;
+    if (src->width != dst->width || src->height != dst->height) return 0;
+    if (ksize % 2 == 0 || ksize < 3) return 0;  // kernel must be odd ≥3
+
+    int w = src->width, h = src->height, n = w * h;
+    int half = ksize / 2;
+
+    // build & normalize 2D Gaussian kernel
+    float* kernel = malloc(ksize * ksize * sizeof(float));
+    if (!kernel) return 0;
+    float sum = 0.0f, s2 = 2.0f * sigma * sigma;
+    for (int y = -half; y <= half; y++) {
+        for (int x = -half; x <= half; x++) {
+            float v = expf(-(x * x + y * y) / s2) / (M_PI * s2);
+            kernel[(y + half) * ksize + (x + half)] = v;
+            sum += v;
+        }
+    }
+    for (int i = 0; i < ksize * ksize; i++) {
+        kernel[i] /= sum;
+    }
+
+    // allocate temp if in-place
+    unsigned char* tmp = NULL;
+    unsigned char* out = dst->data;
+    if (src == dst) {
+        tmp = malloc(n);
+        if (!tmp) { free(kernel); return 0; }
+        out = tmp;
+    }
+
+    // convolve (zero‑padding)
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            float acc = 0.0f;
+            for (int ky = -half; ky <= half; ky++) {
+                int yy = y + ky;
+                if (yy < 0 || yy >= h) continue;
+                for (int kx = -half; kx <= half; kx++) {
+                    int xx = x + kx;
+                    if (xx < 0 || xx >= w) continue;
+                    float kval = kernel[(ky + half) * ksize + (kx + half)];
+                    acc += kval * src->data[yy * w + xx];
+                }
+            }
+            int iv = (int)(acc + 0.5f);
+            out[y * w + x] = (unsigned char)(iv < 0 ? 0 : (iv > 255 ? 255 : iv));
+        }
+    }
+
+    // if we blurred into tmp, copy back
+    if (tmp) {
+        memcpy(dst->data, tmp, n);
+        free(tmp);
+    }
+
+    free(kernel);
+    return 1;
 }
 
 
@@ -83,24 +164,4 @@ int vc_image_free(IVC* image)
         return 1;
     }
     return 0;
-}
-
-
-
-int vc_rgb_get_green(IVC* image)
-{
-    if (image == NULL || image->data == NULL || image->channels != 3)
-        return 0;
-
-    int x, y;
-    for (y = 0; y < image->height; y++)
-    {
-        for (x = 0; x < image->width; x++)
-        {
-            int pos = (y * image->width + x) * 3;
-            image->data[pos + 0] = image->data[pos + 1]; // Red <- Green
-            image->data[pos + 2] = image->data[pos + 1]; // Blue <- Green
-        }
-    }
-    return 1;
 }
