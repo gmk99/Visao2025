@@ -25,6 +25,19 @@ extern "C"
     // Exemplo de função: extrai o canal verde de uma imagem RGB
     int vc_rgb_get_green(IVC* image);
 
+
+    // Converte imagem RGB para escala de cinza (1 canal)
+    void vc_rgb_to_gray(IVC* image, unsigned char* gray);
+
+    // Aplica filtro Sobel para bordas simples, saída binária em edges
+    void vc_sobel_edges(IVC* src, unsigned char* edges);
+    void edges_to_image(IVC* edges_img, unsigned char* edges);
+
+
+    // Transformada de Hough simplificada para círculos de raio fixo
+    void vc_hough_circles(unsigned char* edges, int width, int height, int radius, int* accumulator);
+
+
 #ifdef __cplusplus
 }
 #endif

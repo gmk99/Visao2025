@@ -105,7 +105,7 @@ int main(void) {
 
 
         // Fa�a o seu c�digo aqui...
-
+        /*
         // Cria uma nova imagem IVC
         IVC *image = vc_image_new(video.width, video.height, 3, 256);
         // Copia dados de imagem da estrutura cv::Mat para uma estrutura IVC
@@ -116,14 +116,44 @@ int main(void) {
         memcpy(frame.data, image->data, video.width * video.height * 3);
         // Liberta a mem�ria da imagem IVC que havia sido criada
         vc_image_free(image);
+        */
+
+
+        IVC* image = vc_image_new(video.width, video.height, 3, 256);
+        IVC* edges_img = vc_image_new(video.width, video.height, 3, 256);
+        unsigned char* edges = (unsigned char*)malloc(video.width * video.height);
+
+        while (key != 'q') {
+            capture.read(frame);
+            if (frame.empty()) break;
+
+            memcpy(image->data, frame.data, video.width * video.height * 3);
+
+            vc_sobel_edges(image, edges);
+            edges_to_image(edges_img, edges);
+
+            // Copy edges image data to cv::Mat to display
+            memcpy(frame.data, edges_img->data, video.width * video.height * 3);
+
+            cv::imshow("Edges", frame);
+
+            key = cv::waitKey(1);
+        }
+
+        free(edges);
+        vc_image_free(image);
+
+
+
+
 
         // +++++++++++++++++++++++++
 
         /* Exibe a frame */
-        cv::imshow("VC - VIDEO", frame);
+        //           cv::imshow("VC - VIDEO", frame);
 
         /* Sai da aplica��o, se o utilizador premir a tecla 'q' */
-        key = cv::waitKey(1);
+        //           key = cv::waitKey(1);
     }
 
     /* Para o timer e exibe o tempo decorrido */
