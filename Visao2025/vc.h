@@ -22,21 +22,21 @@ extern "C"
         int area;           // Número de píxeis do blob
         int perimeter;      // (Você deve calcular)
         int label;          // Label associado ao blob
-        int circularity;    // Circularidade do blob
+        float circularity;    // Circularidade do blob
     } OVC;
 
     // Criação de nova imagem
     IVC* vc_image_new(int width, int height, int channels, int levels);
 
-    // Libertar memória de imagem
+    // WORKS
     int vc_image_free(IVC* image);
     void vc_rgb_to_gray(IVC* image, unsigned char* gray);
     int vc_gray_to_binary(IVC* src, IVC* dst, int threshold);
     int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma);
+    OVC* vc_detect_blobs(IVC* src, int* nblobs);
 
-
-    OVC* vc_detect_blobs(IVC* src, int* nblobs); //works
-
+    //WIP
+    OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity);
 
 #ifdef __cplusplus
 }

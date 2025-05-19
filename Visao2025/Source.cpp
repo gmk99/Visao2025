@@ -138,33 +138,47 @@ int main(void) {
         
         
 
-
-
-
         int nblobs;
         OVC* blobs = vc_detect_blobs(image_bin, &nblobs);
 
-        // Draw blobs on the frame
-        for (int i = 0; i < nblobs; i++) {
-            // Draw bounding box
-            cv::rectangle(frame,
-                cv::Point(blobs[i].x - blobs[i].width / 2, blobs[i].y - blobs[i].height / 2),
-                cv::Point(blobs[i].x + blobs[i].width / 2, blobs[i].y + blobs[i].height / 2),
-                cv::Scalar(0, 255, 0), 2);
-            // Draw label
-            std::string label = "Blob " + std::to_string(blobs[i].label);
-            cv::putText(frame, label, cv::Point(blobs[i].x, blobs[i].y),
-                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+
+
+#define MIN_CIRCULARITY 0.52 // Minimum circularity to consider a blob as circular
+        int n_circular_blobs = nblobs;
+        OVC* circular_blobs = vc_filter_circular_blobs(blobs, &n_circular_blobs, MIN_CIRCULARITY);
+
+        // Draw bounding boxes for all blobs (green)
+        if (blobs) {
+            for (int i = 0; i < nblobs; i++) {
+                cv::rectangle(frame,
+                    cv::Point(blobs[i].x - blobs[i].width / 2, blobs[i].y - blobs[i].height / 2),
+                    cv::Point(blobs[i].x + blobs[i].width / 2, blobs[i].y + blobs[i].height / 2),
+                    cv::Scalar(0, 255, 0), 2);
+
+            }
         }
 
-        // Free blob array
-        free(blobs);
+        // Draw bounding boxes for circular blobs (red)
+        if (circular_blobs) {
+            for (int i = 0; i < n_circular_blobs; i++) {
+                cv::rectangle(frame,
+                    cv::Point(circular_blobs[i].x - circular_blobs[i].width / 2, circular_blobs[i].y - circular_blobs[i].height / 2),
+                    cv::Point(circular_blobs[i].x + circular_blobs[i].width / 2, circular_blobs[i].y + circular_blobs[i].height / 2),
+                    cv::Scalar(0, 0, 255), 2);
 
+                // Display circularity value
+                char text[32];
+                snprintf(text, sizeof(text), "%.2f", circular_blobs[i].circularity); // Assuming circularity is a field in OVC
+                cv::putText(frame,
+                    text,
+                    cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 10), // Above the blob
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.5, // Font scale
+                    cv::Scalar(0, 0, 255), // Red text to match bounding box
+                    1); // Thickness
 
-
-
-
-
+            }
+        }
 
 
 
