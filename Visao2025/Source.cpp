@@ -35,7 +35,7 @@ void vc_timer(void) {
 
 int main(void) {
     // V�deo
-    char videofile[20] = "video1.mp4";
+    char videofile[20] = "video2.mp4";
     cv::VideoCapture capture;
     struct
     {
@@ -135,8 +135,38 @@ int main(void) {
         IVC* image_blur = vc_image_new(video.width, video.height, 1, 255);
         vc_gaussian_blur(image_bin, image_blur, 15, 4.0);
         vc_gray_to_binary(image_blur, image_blur, 110); // threshold
-
         
+        
+
+
+
+
+        int nblobs;
+        OVC* blobs = vc_detect_blobs(image_bin, &nblobs);
+
+        // Draw blobs on the frame
+        for (int i = 0; i < nblobs; i++) {
+            // Draw bounding box
+            cv::rectangle(frame,
+                cv::Point(blobs[i].x - blobs[i].width / 2, blobs[i].y - blobs[i].height / 2),
+                cv::Point(blobs[i].x + blobs[i].width / 2, blobs[i].y + blobs[i].height / 2),
+                cv::Scalar(0, 255, 0), 2);
+            // Draw label
+            std::string label = "Blob " + std::to_string(blobs[i].label);
+            cv::putText(frame, label, cv::Point(blobs[i].x, blobs[i].y),
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+        }
+
+        // Free blob array
+        free(blobs);
+
+
+
+
+
+
+
+
 
         // Libera memória
         vc_image_free(image_rgb);
@@ -152,9 +182,6 @@ int main(void) {
 
         // Sai da aplica��o, se o utilizador premir a tecla 'q'
         key = cv::waitKey(1);
-
-
-
 
 
     }

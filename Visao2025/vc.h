@@ -30,12 +30,13 @@ extern "C"
 
     // Libertar memória de imagem
     int vc_image_free(IVC* image);
-
-
-
     void vc_rgb_to_gray(IVC* image, unsigned char* gray);
     int vc_gray_to_binary(IVC* src, IVC* dst, int threshold);
     int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma);
+
+
+    OVC* vc_detect_blobs(IVC* src, int* nblobs); //works
+
 
 #ifdef __cplusplus
 }

@@ -53,18 +53,11 @@ int vc_gray_to_binary(IVC* src, IVC* dst, int threshold) {
         return 0;
 
     for (int i = 0; i < src->width * src->height; i++) {
-        dst->data[i] = (src->data[i] >= threshold) ? 0 : 255;
+        dst->data[i] = (src->data[i] >= threshold) ? 255 : 0;
     }
 
     return 1;
 }
-
-
-
-
-
-
-
 
 // --- Apply 2D convolution (zero‐padding) on single‐channel 8‑bit image ---
 int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
@@ -128,6 +121,108 @@ int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
     free(kernel);
     return 1;
 }
+
+
+
+
+
+OVC* vc_detect_blobs(IVC* src, int* nblobs) {
+    if (!src || src->channels != 1 || src->width <= 0 || src->height <= 0) {
+        *nblobs = 0;
+        return NULL;
+    }
+
+    int width = src->width, height = src->height;
+    int* labels = (int*)calloc(width * height, sizeof(int)); // Label map
+    OVC* blobs = (OVC*)malloc(MAX_LABELS * sizeof(OVC)); // Blob array
+    if (!labels || !blobs) {
+        free(labels);
+        free(blobs);
+        *nblobs = 0;
+        return NULL;
+    }
+
+    int current_label = 0;
+    *nblobs = 0;
+
+    // First pass: Label connected components
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int pos = y * width + x;
+            if (src->data[pos] == 0 && labels[pos] == 0) { // Black pixel, unlabeled
+                if (current_label >= MAX_LABELS) break;
+
+                // Initialize blob
+                blobs[current_label].area = 0;
+                blobs[current_label].x = 0;
+                blobs[current_label].y = 0;
+                blobs[current_label].width = 0;
+                blobs[current_label].height = 0;
+                blobs[current_label].label = current_label + 1;
+                blobs[current_label].perimeter = 0;
+                blobs[current_label].circularity = 0;
+
+                // Flood-fill
+                int min_x = x, max_x = x, min_y = y, max_y = y;
+                int area = 0;
+                int sum_x = 0, sum_y = 0;
+
+                int stack_size = width * height;
+                int* stack = (int*)malloc(stack_size * sizeof(int));
+                int stack_top = 0;
+                stack[stack_top++] = pos;
+
+                while (stack_top > 0) {
+                    int p = stack[--stack_top];
+                    int px = p % width;
+                    int py = p / width;
+                    if (labels[p] != 0 || src->data[p] != 0) continue;
+
+                    labels[p] = current_label + 1;
+                    area++;
+                    sum_x += px;
+                    sum_y += py;
+                    if (px < min_x) min_x = px;
+                    if (px > max_x) max_x = px;
+                    if (py < min_y) min_y = py;
+                    if (py > max_y) max_y = py;
+
+                    // Check 4-connectivity
+                    if (px + 1 < width && stack_top < stack_size) stack[stack_top++] = p + 1;
+                    if (px - 1 >= 0 && stack_top < stack_size) stack[stack_top++] = p - 1;
+                    if (py + 1 < height && stack_top < stack_size) stack[stack_top++] = p + width;
+                    if (py - 1 >= 0 && stack_top < stack_size) stack[stack_top++] = p - width;
+                }
+
+                free(stack);
+
+                if (area > 0) {
+                    blobs[current_label].area = area;
+                    blobs[current_label].x = sum_x / area;
+                    blobs[current_label].y = sum_y / area;
+                    blobs[current_label].width = max_x - min_x + 1;
+                    blobs[current_label].height = max_y - min_y + 1;
+                    current_label++;
+                }
+            }
+        }
+    }
+
+    free(labels);
+    *nblobs = current_label;
+    if (current_label == 0) {
+        free(blobs);
+        return NULL;
+    }
+
+    // Reallocate to exact size
+    blobs = (OVC*)realloc(blobs, current_label * sizeof(OVC));
+    return blobs;
+}
+
+
+
+
 
 
 
