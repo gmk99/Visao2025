@@ -6,7 +6,7 @@
 #define M_PI 3.14159265358979323846
 #define MAX_LABELS 10000
 
-/* Structs for coin color ranges */
+/* Estrutura para cor das moedas */
 typedef struct {
     int r_min, g_min, b_min;
     int r_max, g_max, b_max;
@@ -22,7 +22,7 @@ typedef struct {
     SizeRange sizeRange;
 } CoinType;
 
-/* Color ranges for all the different coins */
+/* Espaço de cor para todas as moedas */
 #define NUM_COINS 8
 
 CoinType coins[NUM_COINS] = {
@@ -37,9 +37,9 @@ CoinType coins[NUM_COINS] = {
     {"2eur",   {60,  75,  77,   67,  83,  87},  {180, 200}}
 };
 
-/** ====================================================== DANGER ZONE ====================================================== */
+/** ====================================================== ZONA DE PERIGO ====================================================== */
 
-// Converte imagem RGB para escala de cinza (grayscale)
+// Converte imagem RGB para escala de cinza
 void vc_rgb_to_gray(IVC* image, unsigned char* gray) {
     for (int i = 0; i < image->width * image->height; i++) {
         int r = image->data[3 * i];
@@ -60,17 +60,17 @@ int vc_gray_to_binary(IVC* src, IVC* dst, int threshold) {
     return 1;
 }
 
-// --- Apply 2D convolution (zero‐padding) on single‐channel 8‑bit image ---
+// --- Aplica convolução 2D (com preenchimento de zeros) em imagem de canal único de 8 bits ---
 int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
     if (!src || !dst) return 0;
     if (src->channels != 1 || dst->channels != 1) return 0;
     if (src->width != dst->width || src->height != dst->height) return 0;
-    if (ksize % 2 == 0 || ksize < 3) return 0;  // kernel must be odd ≥3
+    if (ksize % 2 == 0 || ksize < 3) return 0;  // o kernel deve ser ímpar e ≥3
 
     int w = src->width, h = src->height, n = w * h;
     int half = ksize / 2;
 
-    // build & normalize 2D Gaussian kernel
+    // constrói e normaliza o kernel gaussiano 2D
     float* kernel = malloc(ksize * ksize * sizeof(float));
     if (!kernel) return 0;
     float sum = 0.0f, s2 = 2.0f * sigma * sigma;
@@ -85,7 +85,7 @@ int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
         kernel[i] /= sum;
     }
 
-    // allocate temp if in-place
+    // aloca memória temporária se for no mesmo lugar
     unsigned char* tmp = NULL;
     unsigned char* out = dst->data;
     if (src == dst) {
@@ -94,7 +94,7 @@ int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
         out = tmp;
     }
 
-    // convolve (zero‐padding)
+    // faz a convolução (com preenchimento de zeros)
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             float acc = 0.0f;
@@ -113,7 +113,7 @@ int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
         }
     }
 
-    // if we blurred into tmp, copy back
+    // se a convolução foi feita em tmp, copia de volta
     if (tmp) {
         memcpy(dst->data, tmp, n);
         free(tmp);
@@ -123,9 +123,9 @@ int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
     return 1;
 }
 
-#define MIN_AREA 200 // Minimum area for a blob to be considered valid
+#define MIN_AREA 200 // Área mínima para que um blob seja considerado válido
 
-// --- Detect black blobs in a binary image with minimum area ---
+// --- Deteta blobs pretos numa imagem binária com área mínima ---
 OVC* vc_detect_blobs(IVC* src, int* nblobs) {
     if (!src || src->channels != 1 || src->width <= 0 || src->height <= 0) {
         *nblobs = 0;
@@ -133,8 +133,8 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
     }
 
     int width = src->width, height = src->height;
-    int* labels = (int*)calloc(width * height, sizeof(int)); // Label map
-    OVC* blobs = (OVC*)malloc(MAX_LABELS * sizeof(OVC)); // Blob array
+    int* labels = (int*)calloc(width * height, sizeof(int)); // Mapa de etiquetas
+    OVC* blobs = (OVC*)malloc(MAX_LABELS * sizeof(OVC)); // Array de blobs
     if (!labels || !blobs) {
         free(labels);
         free(blobs);
@@ -145,14 +145,14 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
     int current_label = 0;
     *nblobs = 0;
 
-    // First pass: Label connected components and calculate perimeter
+    // Primeira passagem: Etiqueta componentes conectados e calcula o perímetro
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             int pos = y * width + x;
-            if (src->data[pos] == 0 && labels[pos] == 0) { // Black pixel, unlabeled
+            if (src->data[pos] == 0 && labels[pos] == 0) { // Pixel preto, não etiquetado
                 if (current_label >= MAX_LABELS) break;
 
-                // Initialize blob
+                // Inicializa blob
                 blobs[current_label].area = 0;
                 blobs[current_label].x = 0;
                 blobs[current_label].y = 0;
@@ -163,7 +163,7 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
                 blobs[current_label].bb_perimeter = 0;
                 blobs[current_label].circularity = 0;
 
-                // Flood-fill
+                // Preenchimento por inundação
                 int min_x = x, max_x = x, min_y = y, max_y = y;
                 int area = 0;
                 int sum_x = 0, sum_y = 0;
@@ -189,7 +189,7 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
                     if (py < min_y) min_y = py;
                     if (py > max_y) max_y = py;
 
-                    // Check if pixel is on the boundary
+                    // Verifica se o pixel está na fronteira
                     int is_boundary = 0;
                     if (px + 1 >= width || px - 1 < 0 || py + 1 >= height || py - 1 < 0 ||
                         src->data[p + 1] == 255 || src->data[p - 1] == 255 ||
@@ -198,7 +198,7 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
                         perimeter++;
                     }
 
-                    // Check 4-connectivity
+                    // Verifica conectividade-4
                     if (px + 1 < width && stack_top < stack_size) stack[stack_top++] = p + 1;
                     if (px - 1 >= 0 && stack_top < stack_size) stack[stack_top++] = p - 1;
                     if (py + 1 < height && stack_top < stack_size) stack[stack_top++] = p + width;
@@ -207,7 +207,7 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
 
                 free(stack);
 
-                // Only store blob if area meets minimum requirement
+                // Armazena o blob apenas se a área cumprir o requisito mínimo
                 if (area >= MIN_AREA) {
                     blobs[current_label].area = area;
                     blobs[current_label].x = sum_x / area;
@@ -229,7 +229,7 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
         return NULL;
     }
 
-    // Reallocate to exact size
+    // Realoca para o tamanho exato
     blobs = (OVC*)realloc(blobs, current_label * sizeof(OVC));
     if (blobs == NULL) {
         free(labels);
@@ -239,14 +239,14 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
     return blobs;
 }
 
-// --- Filter blobs that are similar to circles based on circularity ---
+// --- Filtra blobs semelhantes a círculos com base na circularidade ---
 OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
     if (!blobs || *nblobs <= 0) {
         *nblobs = 0;
         return NULL;
     }
 
-    // Allocate temporary array for circular blobs
+    // Aloca array temporário para blobs circulares
     OVC* circular_blobs = (OVC*)malloc(*nblobs * sizeof(OVC));
     if (!circular_blobs) {
         *nblobs = 0;
@@ -255,21 +255,21 @@ OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
 
     int new_nblobs = 0;
 
-    // Process each blob
+    // Processa cada blob
     for (int i = 0; i < *nblobs; i++) {
-        // Use bb_perimeter for circularity calculation
+        // Usa bb_perimeter para cálculo da circularidade
         int bb_perimeter = blobs[i].bb_perimeter;
         float circularity = (bb_perimeter > 0) ? (4.0f * M_PI * blobs[i].area) / (bb_perimeter * bb_perimeter) : 0.0f;
         blobs[i].circularity = circularity;
 
-        // Only keep blobs with sufficient circularity
+        // Mantém apenas blobs com circularidade suficiente
         if (circularity >= min_circularity) {
             circular_blobs[new_nblobs] = blobs[i];
             new_nblobs++;
         }
     }
 
-    // Update nblobs
+    // Atualiza nblobs
     *nblobs = new_nblobs;
 
     if (new_nblobs == 0) {
@@ -277,7 +277,7 @@ OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
         return NULL;
     }
 
-    // Reallocate to exact size
+    // Realoca para o tamanho exato
     circular_blobs = (OVC*)realloc(circular_blobs, new_nblobs * sizeof(OVC));
     return circular_blobs;
 }
@@ -302,7 +302,7 @@ CoinResult* vc_identify_coin(IVC* image_rgb, IVC* image_bin, OVC* blob) {
         for (int x = x_min; x <= x_max; x++) {
             int pos_rgb = (y * image_rgb->width + x) * 3;
             int pos_bin = y * image_bin->width + x;
-            if (image_bin->data[pos_bin] == 0) { // Only include coin pixels (black in binary)
+            if (image_bin->data[pos_bin] == 0) { // Inclui apenas pixels da moeda (pretos na imagem binária)
                 r_sum += image_rgb->data[pos_rgb];
                 g_sum += image_rgb->data[pos_rgb + 1];
                 b_sum += image_rgb->data[pos_rgb + 2];
@@ -321,7 +321,7 @@ CoinResult* vc_identify_coin(IVC* image_rgb, IVC* image_bin, OVC* blob) {
     result->g_avg = (int)(g_sum / pixel_count);
     result->b_avg = (int)(b_sum / pixel_count);
 
-    // Check both color and size ranges
+    // Verifica intervalos de cor e tamanho
     for (int i = 0; i < NUM_COINS; i++) {
         ColorRange* range = &coins[i].range;
         SizeRange* size = &coins[i].sizeRange;
