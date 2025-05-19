@@ -215,10 +215,6 @@ int main(void) {
         }
 
 
-
-
-
-
         // Libera memória
         vc_image_free(image_rgb);
         vc_image_free(image_gray);
