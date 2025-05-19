@@ -4,10 +4,7 @@
 #include "vc.h"
 
 #define M_PI 3.14159265358979323846
-
-
 #define MAX_LABELS 10000
-
 
 /* Structs for coin color ranges */
 typedef struct {
@@ -30,14 +27,14 @@ typedef struct {
 
 CoinType coins[NUM_COINS] = {
     // {"name", {r_min, g_min, b_min, r_max, g_max, b_max}, {size_min, size_max}}
-    {"1cent",  {20,  36,  65,   56,  76,  81},  {110, 130}},
-    {"2cent",  {20,  36,  65,   56,  76,  81},  {130, 150}},
-    {"5cent",  {20,  36,  65,   56,  76,  81},  {145, 165}},
-    {"10cent", {38,  66,  72,   69, 108, 112}, {130, 150}},
-    {"20cent", {38,  66,  72,   69, 108, 112}, {150, 170}},
-    {"50cent", {38,  66,  72,   69, 108, 112}, {170, 190}},
+    {"1cent",  {20,  36,  65,   56,  76,  85},  {110, 130}},
+    {"2cent",  {20,  36,  65,   56,  62,  82},  {130, 140}},
+    {"5cent",  {20,  36,  65,   56,  76,  90},  {150, 165}},
+    {"10cent", {32,  66,  72,   69, 108, 112}, {130, 150}},
+    {"20cent", {30,  55,  60,   69, 108, 112}, {150, 170}},
+    {"50cent", {38,  66,  72,   66, 108, 112}, {170, 185}},
     {"1eur",   {39,  53,  56,   84,  97,  97},  {165, 185}},
-    {"2eur",   {60,  75,  77,   67,  83,  83},  {180, 200}}
+    {"2eur",   {60,  75,  77,   67,  83,  87},  {180, 200}}
 };
 
 /** ====================================================== DANGER ZONE ====================================================== */
@@ -97,7 +94,7 @@ int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
         out = tmp;
     }
 
-    // convolve (zero‑padding)
+    // convolve (zero‐padding)
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
             float acc = 0.0f;
@@ -126,7 +123,6 @@ int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma) {
     return 1;
 }
 
-
 #define MIN_AREA 200 // Minimum area for a blob to be considered valid
 
 // --- Detect black blobs in a binary image with minimum area ---
@@ -149,7 +145,7 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
     int current_label = 0;
     *nblobs = 0;
 
-    // First pass: Label connected components
+    // First pass: Label connected components and calculate perimeter
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             int pos = y * width + x;
@@ -164,12 +160,14 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
                 blobs[current_label].height = 0;
                 blobs[current_label].label = current_label + 1;
                 blobs[current_label].perimeter = 0;
+                blobs[current_label].bb_perimeter = 0;
                 blobs[current_label].circularity = 0;
 
                 // Flood-fill
                 int min_x = x, max_x = x, min_y = y, max_y = y;
                 int area = 0;
                 int sum_x = 0, sum_y = 0;
+                int perimeter = 0;
 
                 int stack_size = width * height;
                 int* stack = (int*)malloc(stack_size * sizeof(int));
@@ -191,6 +189,15 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
                     if (py < min_y) min_y = py;
                     if (py > max_y) max_y = py;
 
+                    // Check if pixel is on the boundary
+                    int is_boundary = 0;
+                    if (px + 1 >= width || px - 1 < 0 || py + 1 >= height || py - 1 < 0 ||
+                        src->data[p + 1] == 255 || src->data[p - 1] == 255 ||
+                        src->data[p + width] == 255 || src->data[p - width] == 255) {
+                        is_boundary = 1;
+                        perimeter++;
+                    }
+
                     // Check 4-connectivity
                     if (px + 1 < width && stack_top < stack_size) stack[stack_top++] = p + 1;
                     if (px - 1 >= 0 && stack_top < stack_size) stack[stack_top++] = p - 1;
@@ -207,6 +214,8 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
                     blobs[current_label].y = sum_y / area;
                     blobs[current_label].width = max_x - min_x + 1;
                     blobs[current_label].height = max_y - min_y + 1;
+                    blobs[current_label].perimeter = perimeter;
+                    blobs[current_label].bb_perimeter = 2 * (blobs[current_label].width + blobs[current_label].height);
                     current_label++;
                 }
             }
@@ -221,11 +230,11 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
     }
 
     // Reallocate to exact size
-    blobs = (OVC*)realloc(blobs, current_label * sizeof(OVC));  
-    if (blobs == NULL) {  
-        free(labels);  
-        *nblobs = 0;  
-        return NULL;  
+    blobs = (OVC*)realloc(blobs, current_label * sizeof(OVC));
+    if (blobs == NULL) {
+        free(labels);
+        *nblobs = 0;
+        return NULL;
     }
     return blobs;
 }
@@ -248,13 +257,9 @@ OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
 
     // Process each blob
     for (int i = 0; i < *nblobs; i++) {
-        // Calculate perimeter (approximation using bounding box)
-        // We'll use a simple perimeter estimation based on the bounding box
-        int perimeter = 2 * (blobs[i].width + blobs[i].height);
-        blobs[i].perimeter = perimeter;
-
-        // Calculate circularity: (4 * PI * Area) / (Perimeter^2)
-        float circularity = (perimeter > 0) ? (4.0f * M_PI * blobs[i].area) / (perimeter * perimeter) : 0.0f;
+        // Use bb_perimeter for circularity calculation
+        int bb_perimeter = blobs[i].bb_perimeter;
+        float circularity = (bb_perimeter > 0) ? (4.0f * M_PI * blobs[i].area) / (bb_perimeter * bb_perimeter) : 0.0f;
         blobs[i].circularity = circularity;
 
         // Only keep blobs with sufficient circularity
@@ -276,7 +281,6 @@ OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
     circular_blobs = (OVC*)realloc(circular_blobs, new_nblobs * sizeof(OVC));
     return circular_blobs;
 }
-
 
 CoinResult* vc_identify_coin(IVC* image_rgb, IVC* image_bin, OVC* blob) {
     if (!image_rgb || !image_bin || !blob || image_rgb->channels != 3 || image_bin->channels != 1) return NULL;
@@ -333,8 +337,6 @@ CoinResult* vc_identify_coin(IVC* image_rgb, IVC* image_bin, OVC* blob) {
     result->coin_name = NULL;
     return result;
 }
-
-
 
 /** ========================================================================================================================= */
 

@@ -10,7 +10,6 @@ extern "C" {
 #include "vc.h"
 }
 
-
 void vc_timer(void) {
     static bool running = false;
     static std::chrono::steady_clock::time_point previousTime = std::chrono::steady_clock::now();
@@ -32,9 +31,8 @@ void vc_timer(void) {
     }
 }
 
-
 int main(void) {
-    // Vï¿½deo
+    // Vídeo
     char videofile[20] = "video2.mp4";
     cv::VideoCapture capture;
     struct
@@ -48,31 +46,33 @@ int main(void) {
     std::string str;
     int key = 0;
 
-    /* Leitura de vï¿½deo de um ficheiro */
-    /* NOTA IMPORTANTE:
-    O ficheiro video.avi deverï¿½ estar localizado no mesmo directï¿½rio que o ficheiro de cï¿½digo fonte.
-    */
+    // Arrays to count each coin type and track area and perimeter
+    int coin_counts[8] = { 0 }; // 1cent, 2cent, 5cent, 10cent, 20cent, 50cent, 1eur, 2eur
+    long long coin_areas[8] = { 0 }; // Total area per coin type
+    long long coin_perimeters[8] = { 0 }; // Total perimeter per coin type
+    const char* coin_names[8] = { "1cent", "2cent", "5cent", "10cent", "20cent", "50cent", "1eur", "2eur" };
+    // Coin values in euros
+    const double coin_values[8] = { 0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.00, 2.00 };
+
+    /* Leitura de vídeo de um ficheiro */
     capture.open(videofile);
 
-    /* Em alternativa, abrir captura de vï¿½deo pela Webcam #0 */
-    //capture.open(0, cv::CAP_DSHOW); // Pode-se utilizar apenas capture.open(0);
-
-    /* Verifica se foi possï¿½vel abrir o ficheiro de vï¿½deo */
+    /* Verifica se foi possível abrir o ficheiro de vídeo */
     if (!capture.isOpened())
     {
-        std::cerr << "Erro ao abrir o ficheiro de vï¿½deo!\n";
+        std::cerr << "Erro ao abrir o ficheiro de vídeo!\n";
         return 1;
     }
 
-    /* Nï¿½mero total de frames no vï¿½deo */
+    /* Número total de frames no vídeo */
     video.ntotalframes = (int)capture.get(cv::CAP_PROP_FRAME_COUNT);
-    /* Frame rate do vï¿½deo */
+    /* Frame rate do vídeo */
     video.fps = (int)capture.get(cv::CAP_PROP_FPS);
-    /* Resoluï¿½ï¿½o do vï¿½deo */
+    /* Resolução do vídeo */
     video.width = (int)capture.get(cv::CAP_PROP_FRAME_WIDTH);
     video.height = (int)capture.get(cv::CAP_PROP_FRAME_HEIGHT);
 
-    /* Cria uma janela para exibir o vï¿½deo */
+    /* Cria uma janela para exibir o vídeo */
     cv::namedWindow("VC - VIDEO", cv::WINDOW_AUTOSIZE);
 
     /* Inicia o timer */
@@ -80,16 +80,16 @@ int main(void) {
 
     cv::Mat frame;
     while (key != 'q') {
-        /* Leitura de uma frame do vï¿½deo */
+        /* Leitura de uma frame do vídeo */
         capture.read(frame);
 
         /* Verifica se conseguiu ler a frame */
         if (frame.empty()) break;
 
-        /* Nï¿½mero da frame a processar */
+        /* Número da frame a processar */
         video.nframe = (int)capture.get(cv::CAP_PROP_POS_FRAMES);
 
-        /* Exemplo de inserï¿½ï¿½o texto na frame */
+        /* Exemplo de inserção texto na frame */
         str = std::string("RESOLUCAO: ").append(std::to_string(video.width)).append("x").append(std::to_string(video.height));
         cv::putText(frame, str, cv::Point(20, 25), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
         cv::putText(frame, str, cv::Point(20, 25), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 1);
@@ -103,21 +103,8 @@ int main(void) {
         cv::putText(frame, str, cv::Point(20, 100), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 0), 2);
         cv::putText(frame, str, cv::Point(20, 100), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 1);
 
-
-        // Faï¿½a o seu cï¿½digo aqui...
-
-        /*
-        // Cria uma nova imagem IVC
-        IVC *image = vc_image_new(video.width, video.height, 3, 256);
-        // Copia dados de imagem da estrutura cv::Mat para uma estrutura IVC
-        memcpy(image->data, frame.data, video.width * video.height * 3);
-        // Executa uma funï¿½ï¿½o da nossa biblioteca vc
-        vc_rgb_get_green(image);
-        // Copia dados de imagem da estrutura IVC para uma estrutura cv::Mat
-        memcpy(frame.data, image->data, video.width * video.height * 3);
-        // Liberta a memï¿½ria da imagem IVC que havia sido criada
-        vc_image_free(image);
-        */
+        // Process only every 25th frame for coin counting
+        bool process_coins = (video.nframe % 62 == 0);
 
         // Cria imagem IVC (RGB)
         IVC* image_rgb = vc_image_new(video.width, video.height, 3, 255);
@@ -127,7 +114,7 @@ int main(void) {
         IVC* image_gray = vc_image_new(video.width, video.height, 1, 255);
         vc_rgb_to_gray(image_rgb, image_gray->data);
 
-        // Cria imagem binÃ¡ria
+        // Cria imagem binária
         IVC* image_bin = vc_image_new(video.width, video.height, 1, 255);
         vc_gray_to_binary(image_gray, image_bin, 110); // threshold
 
@@ -139,12 +126,10 @@ int main(void) {
         // Cria imagem para blur e copia os dados do cv::Mat
         IVC* image_blur = vc_image_new(video.width, video.height, 1, 255);
         memcpy(image_blur->data, mat_blur.data, video.width * video.height * 1);
-        vc_gray_to_binary(image_blur, image_blur, 110); // threshold
+        vc_gray_to_binary(image_blur, image_bin, 110); // threshold
 
         int nblobs;
         OVC* blobs = vc_detect_blobs(image_bin, &nblobs);
-
-
 
 #define MIN_CIRCULARITY 0.52 // Minimum circularity to consider a blob as circular
         int n_circular_blobs = nblobs;
@@ -157,11 +142,8 @@ int main(void) {
                     cv::Point(blobs[i].x - blobs[i].width / 2, blobs[i].y - blobs[i].height / 2),
                     cv::Point(blobs[i].x + blobs[i].width / 2, blobs[i].y + blobs[i].height / 2),
                     cv::Scalar(0, 255, 0), 2);
-
             }
         }
-
-
 
         if (circular_blobs) {
             for (int i = 0; i < n_circular_blobs; i++) {
@@ -180,6 +162,26 @@ int main(void) {
                     cv::Scalar(0, 0, 255),
                     1);
 
+                char area_text[32];
+                snprintf(area_text, sizeof(area_text), "Area: %d", circular_blobs[i].area);
+                cv::putText(frame,
+                    area_text,
+                    cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 70),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    cv::Scalar(0, 0, 255),
+                    1);
+
+                char perimeter_text[32];
+                snprintf(perimeter_text, sizeof(perimeter_text), "Perimeter: %d", circular_blobs[i].perimeter);
+                cv::putText(frame,
+                    perimeter_text,
+                    cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 50),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    cv::Scalar(0, 0, 255),
+                    1);
+
                 CoinResult* result = vc_identify_coin(image_rgb, image_bin, &circular_blobs[i]);
                 if (result) {
                     char rgb_text[32];
@@ -192,16 +194,6 @@ int main(void) {
                         cv::Scalar(0, 0, 255),
                         1);
 
-                    char width_text[32];
-                    snprintf(width_text, sizeof(width_text), "Width: %d", circular_blobs[i].width);
-                    cv::putText(frame,
-                        width_text,
-                        cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 50),
-                        cv::FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        cv::Scalar(0, 0, 255),
-                        1);
-
                     cv::putText(frame,
                         result->coin_name ? result->coin_name : "Unknown",
                         cv::Point(circular_blobs[i].x, circular_blobs[i].y + circular_blobs[i].height / 2 + 20),
@@ -209,29 +201,39 @@ int main(void) {
                         0.5,
                         cv::Scalar(0, 0, 255),
                         1);
+
+                    // Increment coin count, area, and perimeter if identified and on a 25th frame
+                    if (result->coin_name && process_coins) {
+                        for (int j = 0; j < 8; j++) {
+                            if (strcmp(result->coin_name, coin_names[j]) == 0) {
+                                coin_counts[j]++;
+                                coin_areas[j] += circular_blobs[i].area;
+                                coin_perimeters[j] += circular_blobs[i].perimeter;
+                                break;
+                            }
+                        }
+                    }
+
                     free(result); // Free the allocated CoinResult
                 }
             }
         }
 
-
-        // Libera memÃ³ria
+        // Libera memória
         vc_image_free(image_rgb);
         vc_image_free(image_gray);
         vc_image_free(image_bin);
-
-        // +++++++++++++++++++++++++
+        vc_image_free(image_blur);
+        free(blobs);
+        free(circular_blobs);
 
         // Exibe a frame
         cv::Mat frame_blur(video.height, video.width, CV_8UC1, image_blur->data);
-        cv::imshow("Imagem Borrada", frame_blur);
+        //cv::imshow("Imagem Borrada", frame_blur);
         cv::imshow("VC - VIDEO", frame);
 
-
-        // Sai da aplicaï¿½ï¿½o, se o utilizador premir a tecla 'q'
+        // Sai da aplicação, se o utilizador premir a tecla 'q'
         key = cv::waitKey(1);
-
-
     }
 
     /* Para o timer e exibe o tempo decorrido */
@@ -239,8 +241,34 @@ int main(void) {
 
     /* Fecha a janela */
     cv::destroyWindow("VC - VIDEO");
+    //cv::destroyWindow("Imagem Borrada");
 
-    /* Fecha o ficheiro de vï¿½deo */
+    /* Calcula o valor total em euros */
+    double total_value = 0.0;
+    for (int i = 0; i < 8; i++) {
+        total_value += coin_counts[i] * coin_values[i];
+    }
+
+    /* Calcula a área total e o perímetro total */
+    long long total_area = 0;
+    long long total_perimeter = 0;
+    for (int i = 0; i < 8; i++) {
+        total_area += coin_areas[i];
+        total_perimeter += coin_perimeters[i];
+    }
+
+    /* Exibe a contagem de moedas por tipo, área total, perímetro total e valor total */
+    std::cout << "\nContagem de moedas por tipo:\n";
+    for (int i = 0; i < 8; i++) {
+        std::cout << coin_names[i] << ": " << coin_counts[i]
+            << ", Area Total: " << coin_areas[i]
+            << ", Perimetro Total: " << coin_perimeters[i] << std::endl;
+    }
+    std::cout << "\nValor Total: " << std::fixed << std::setprecision(2) << total_value << " Euros" << std::endl;
+    std::cout << "Area Total (todas as moedas): " << total_area << " pixels" << std::endl;
+    std::cout << "Perimetro Total (todas as moedas): " << total_perimeter << " pixels" << std::endl;
+
+    /* Fecha o ficheiro de vídeo */
     capture.release();
 
     return 0;

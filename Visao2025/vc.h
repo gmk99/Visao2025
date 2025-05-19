@@ -20,9 +20,10 @@ extern "C"
         int x, y;           // Coordenadas do centro
         int width, height;  // Dimensões do bounding box
         int area;           // Número de píxeis do blob
-        int perimeter;      // (Você deve calcular)
+        int perimeter;      // Perímetro real do blob (em píxeis)
+        int bb_perimeter;   // Perímetro aproximado do bounding box (usado para circularidade)
         int label;          // Label associado ao blob
-        float circularity;    // Circularidade do blob
+        float circularity;  // Circularidade do blob
     } OVC;
 
     typedef struct {
@@ -31,8 +32,6 @@ extern "C"
         int g_avg;
         int b_avg;
     } CoinResult;
-
-
 
     // Criação de nova imagem
     IVC* vc_image_new(int width, int height, int channels, int levels);
