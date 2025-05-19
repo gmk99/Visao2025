@@ -35,7 +35,7 @@ void vc_timer(void) {
 
 int main(void) {
     // V�deo
-    char videofile[20] = "video1.mp4";
+    char videofile[20] = "video2.mp4";
     cv::VideoCapture capture;
     struct
     {
