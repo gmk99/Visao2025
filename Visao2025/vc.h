@@ -25,6 +25,15 @@ extern "C"
         float circularity;    // Circularidade do blob
     } OVC;
 
+    typedef struct {
+        const char* coin_name;
+        int r_avg;
+        int g_avg;
+        int b_avg;
+    } CoinResult;
+
+
+
     // Criação de nova imagem
     IVC* vc_image_new(int width, int height, int channels, int levels);
 
@@ -34,9 +43,10 @@ extern "C"
     int vc_gray_to_binary(IVC* src, IVC* dst, int threshold);
     int vc_gaussian_blur(IVC* src, IVC* dst, int ksize, float sigma);
     OVC* vc_detect_blobs(IVC* src, int* nblobs);
+    OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity);
 
     //WIP
-    OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity);
+    CoinResult* vc_identify_coin(IVC* image_rgb, IVC* image_bin, OVC* blob);
 
 #ifdef __cplusplus
 }

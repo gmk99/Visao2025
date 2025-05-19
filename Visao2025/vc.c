@@ -26,14 +26,10 @@ typedef struct {
    The issue was caused by incorrect nesting of the `ColorRange` struct. */
 
 CoinType coins[NUM_COINS] = {
-    {"1c",  {20, 50, 20, 40, 70, 60}},
-    {"2c",  {20, 50, 20, 40, 70, 60}},
-    {"5c",  {20, 50, 20, 40, 70, 60}},
-    {"10c", {85, 80, 55, 115, 110, 75}},
-    {"20c", {85, 80, 55, 115, 110, 75}},
-    {"50c", {85, 80, 55, 115, 110, 75}},
-    {"1eur",{170, 170, 170, 220, 220, 220}},
-    {"2eur",{100, 100, 100, 150, 150, 150}}
+    {"c1_5",  {20,  36,  65,   56,  76,  81}},
+    {"c10_50",{38,  66,  72,   69, 108,  112}},
+    {"1eur",  {39,  53,  56,   84,  97,   97}},
+    {"2eur",  {60,  75,  77,   67,  83,   83}}
 };
 
 /** ====================================================== DANGER ZONE ====================================================== */
@@ -277,6 +273,114 @@ OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
 }
 
 
+
+
+
+
+CoinResult* vc_identify_coin(IVC* image_rgb, IVC* image_bin, OVC* blob) {
+    if (!image_rgb || !image_bin || !blob || image_rgb->channels != 3 || image_bin->channels != 1) return NULL;
+
+    int x_min = blob->x - blob->width / 2;
+    int x_max = blob->x + blob->width / 2;
+    int y_min = blob->y - blob->height / 2;
+    int y_max = blob->y + blob->height / 2;
+
+    x_min = x_min < 0 ? 0 : x_min;
+    x_max = x_max >= image_rgb->width ? image_rgb->width - 1 : x_max;
+    y_min = y_min < 0 ? 0 : y_min;
+    y_max = y_max >= image_rgb->height ? image_rgb->height - 1 : y_max;
+
+    float r_sum = 0, g_sum = 0, b_sum = 0;
+    int pixel_count = 0;
+
+    for (int y = y_min; y <= y_max; y++) {
+        for (int x = x_min; x <= x_max; x++) {
+            int pos_rgb = (y * image_rgb->width + x) * 3;
+            int pos_bin = y * image_bin->width + x;
+            if (image_bin->data[pos_bin] == 0) { // Only include coin pixels (black in binary)
+                r_sum += image_rgb->data[pos_rgb];
+                g_sum += image_rgb->data[pos_rgb + 1];
+                b_sum += image_rgb->data[pos_rgb + 2];
+                pixel_count++;
+            }
+        }
+    }
+
+    CoinResult* result = (CoinResult*)malloc(sizeof(CoinResult));
+    if (pixel_count == 0 || !result) {
+        free(result);
+        return NULL;
+    }
+
+    result->r_avg = (int)(r_sum / pixel_count);
+    result->g_avg = (int)(g_sum / pixel_count);
+    result->b_avg = (int)(b_sum / pixel_count);
+
+    for (int i = 0; i < NUM_COINS; i++) {
+        ColorRange* range = &coins[i].range;
+        if (result->r_avg >= range->r_min && result->r_avg <= range->r_max &&
+            result->g_avg >= range->g_min && result->g_avg <= range->g_max &&
+            result->b_avg >= range->b_min && result->b_avg <= range->b_max) {
+            result->coin_name = coins[i].name;
+            return result;
+        }
+    }
+
+    result->coin_name = NULL;
+    return result;
+}
+
+
+
+
+
+
+
+// --- Identify coin type based on color ---
+/*
+const char* vc_identify_coin(IVC* image_rgb, OVC* blob) {
+    if (!image_rgb || !blob || image_rgb->channels != 3) return NULL;
+
+    int x_min = blob->x - blob->width / 2;
+    int x_max = blob->x + blob->width / 2;
+    int y_min = blob->y - blob->height / 2;
+    int y_max = blob->y + blob->height / 2;
+
+    x_min = x_min < 0 ? 0 : x_min;
+    x_max = x_max >= image_rgb->width ? image_rgb->width - 1 : x_max;
+    y_min = y_min < 0 ? 0 : y_min;
+    y_max = y_max >= image_rgb->height ? image_rgb->height - 1 : y_max;
+
+    float r_sum = 0, g_sum = 0, b_sum = 0;
+    int pixel_count = 0;
+
+    for (int y = y_min; y <= y_max; y++) {
+        for (int x = x_min; x <= x_max; x++) {
+            int pos = (y * image_rgb->width + x) * 3;
+            r_sum += image_rgb->data[pos];
+            g_sum += image_rgb->data[pos + 1];
+            b_sum += image_rgb->data[pos + 2];
+            pixel_count++;
+        }
+    }
+
+    if (pixel_count == 0) return NULL;
+
+    int r_avg = (int)(r_sum / pixel_count);
+    int g_avg = (int)(g_sum / pixel_count);
+    int b_avg = (int)(b_sum / pixel_count);
+
+    for (int i = 0; i < NUM_COINS; i++) {
+        ColorRange* range = &coins[i].range;
+        if (r_avg >= range->r_min && r_avg <= range->r_max &&
+            g_avg >= range->g_min && g_avg <= range->g_max &&
+            b_avg >= range->b_min && b_avg <= range->b_max) {
+            return coins[i].name;
+        }
+    }
+
+    return NULL;
+}*/
 
 
 /** ========================================================================================================================= */

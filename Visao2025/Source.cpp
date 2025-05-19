@@ -158,6 +158,71 @@ int main(void) {
             }
         }
 
+
+
+        if (circular_blobs) {
+            for (int i = 0; i < n_circular_blobs; i++) {
+                cv::rectangle(frame,
+                    cv::Point(circular_blobs[i].x - circular_blobs[i].width / 2, circular_blobs[i].y - circular_blobs[i].height / 2),
+                    cv::Point(circular_blobs[i].x + circular_blobs[i].width / 2, circular_blobs[i].y + circular_blobs[i].height / 2),
+                    cv::Scalar(0, 0, 255), 2);
+
+                char text[32];
+                snprintf(text, sizeof(text), "%.2f", circular_blobs[i].circularity);
+                cv::putText(frame,
+                    text,
+                    cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 10),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    cv::Scalar(0, 0, 255),
+                    1);
+
+                CoinResult* result = vc_identify_coin(image_rgb, image_bin, &circular_blobs[i]);
+                if (result) {
+                    char rgb_text[32];
+                    snprintf(rgb_text, sizeof(rgb_text), "RGB: %d,%d,%d", result->r_avg, result->g_avg, result->b_avg);
+                    cv::putText(frame,
+                        rgb_text,
+                        cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 30),
+                        cv::FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        cv::Scalar(0, 0, 255),
+                        1);
+
+                    cv::putText(frame,
+                        result->coin_name ? result->coin_name : "Unknown",
+                        cv::Point(circular_blobs[i].x, circular_blobs[i].y + circular_blobs[i].height / 2 + 20),
+                        cv::FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        cv::Scalar(0, 0, 255),
+                        1);
+                    free(result); // Free the allocated CoinResult
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // DRAWING RED BOXES ON CIRCULAR BLOBS
+        /*
         // Draw bounding boxes for circular blobs (red)
         if (circular_blobs) {
             for (int i = 0; i < n_circular_blobs; i++) {
@@ -178,7 +243,7 @@ int main(void) {
                     1); // Thickness
 
             }
-        }
+        }*/
 
 
 
@@ -193,6 +258,7 @@ int main(void) {
         cv::Mat frame_blur(video.height, video.width, CV_8UC1, image_blur->data);
         cv::imshow("Imagem Borrada", frame_blur);
         cv::imshow("VC - VIDEO", frame);
+
 
         // Sai da aplica��o, se o utilizador premir a tecla 'q'
         key = cv::waitKey(1);
