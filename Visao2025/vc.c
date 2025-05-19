@@ -16,20 +16,39 @@ typedef struct {
 } ColorRange;
 
 typedef struct {
+    int size_min, size_max;
+} SizeRange;
+
+typedef struct {
     char* name;
     ColorRange range;
+    //SizeRange sizeRange;
 } CoinType;
 
 /* Color ranges for all the different coins */
 #define NUM_COINS 8
-/* Adjusted initialization of the `coins` array to fix the "muitos valores de inicializadores" error.
-   The issue was caused by incorrect nesting of the `ColorRange` struct. */
+
+/*
+CoinType coins[NUM_COINS] = {
+//  {"name", {r_min, g_min, b_min}, {r_max, g_max, b_max}, {size_min, size_max}}
+    {"1cent",{20,  36,  65,   56,  76,  81}, {110, 130}},
+    {"2cent",{20,  36,  65,   56,  76,  81}, {130, 150}},
+    {"5cent",{20,  36,  65,   56,  76,  81}, {145, 165}},
+    {"10cent",{38,  66,  72,   69, 108,  112}, {130, 150}},
+    {"20cent",{38,  66,  72,   69, 108,  112}, {150, 170}},
+    {"50cent",{38,  66,  72,   69, 108,  112}, {170, 190}},
+    //{"c1_5",  {20,  36,  65,   56,  76,  81}, {110, 130}},
+    //{"c10_50",{38,  66,  72,   69, 108,  112}},
+    {"1eur",  {39, 53, 56, 84, 97, 97}, {165, 185}},
+    {"2eur",  {60, 75, 77, 67, 83, 83}, {180, 200}}
+};*/
 
 CoinType coins[NUM_COINS] = {
-    {"c1_5",  {20,  36,  65,   56,  76,  81}},
-    {"c10_50",{38,  66,  72,   69, 108,  112}},
-    {"1eur",  {39,  53,  56,   84,  97,   97}},
-    {"2eur",  {60,  75,  77,   67,  83,   83}}
+    //  {"name", {r_min, g_min, b_min}, {r_max, g_max, b_max}, {size_min, size_max}}
+        {"c1_5",  {20,  36,  65,   56,  76,  81}},
+        {"c10_50",{38,  66,  72,   69, 108,  112}},
+        {"1eur",  {39, 53, 56, 84, 97, 97}},
+        {"2eur",  {60, 75, 77, 67, 83, 83}}
 };
 
 /** ====================================================== DANGER ZONE ====================================================== */
@@ -222,9 +241,6 @@ OVC* vc_detect_blobs(IVC* src, int* nblobs) {
     return blobs;
 }
 
-
-
-
 // --- Filter blobs that are similar to circles based on circularity ---
 OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
     if (!blobs || *nblobs <= 0) {
@@ -271,11 +287,6 @@ OVC* vc_filter_circular_blobs(OVC* blobs, int* nblobs, float min_circularity) {
     circular_blobs = (OVC*)realloc(circular_blobs, new_nblobs * sizeof(OVC));
     return circular_blobs;
 }
-
-
-
-
-
 
 CoinResult* vc_identify_coin(IVC* image_rgb, IVC* image_bin, OVC* blob) {
     if (!image_rgb || !image_bin || !blob || image_rgb->channels != 3 || image_bin->channels != 1) return NULL;

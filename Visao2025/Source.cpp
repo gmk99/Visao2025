@@ -131,12 +131,15 @@ int main(void) {
         IVC* image_bin = vc_image_new(video.width, video.height, 1, 255);
         vc_gray_to_binary(image_gray, image_bin, 110); // threshold
 
-        // Cria imagem para blur
+        // Convert IVC to cv::Mat for Gaussian blur
+        cv::Mat mat_bin(video.height, video.width, CV_8UC1, image_bin->data);
+        cv::Mat mat_blur;
+        cv::GaussianBlur(mat_bin, mat_blur, cv::Size(15, 15), 4.0);
+
+        // Cria imagem para blur e copia os dados do cv::Mat
         IVC* image_blur = vc_image_new(video.width, video.height, 1, 255);
-        vc_gaussian_blur(image_bin, image_blur, 15, 4.0);
+        memcpy(image_blur->data, mat_blur.data, video.width * video.height * 1);
         vc_gray_to_binary(image_blur, image_blur, 110); // threshold
-        
-        
 
         int nblobs;
         OVC* blobs = vc_detect_blobs(image_bin, &nblobs);
@@ -189,6 +192,16 @@ int main(void) {
                         cv::Scalar(0, 0, 255),
                         1);
 
+                    char width_text[32];
+                    snprintf(width_text, sizeof(width_text), "Width: %d", circular_blobs[i].width);
+                    cv::putText(frame,
+                        width_text,
+                        cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 50),
+                        cv::FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        cv::Scalar(0, 0, 255),
+                        1);
+
                     cv::putText(frame,
                         result->coin_name ? result->coin_name : "Unknown",
                         cv::Point(circular_blobs[i].x, circular_blobs[i].y + circular_blobs[i].height / 2 + 20),
@@ -203,47 +216,6 @@ int main(void) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // DRAWING RED BOXES ON CIRCULAR BLOBS
-        /*
-        // Draw bounding boxes for circular blobs (red)
-        if (circular_blobs) {
-            for (int i = 0; i < n_circular_blobs; i++) {
-                cv::rectangle(frame,
-                    cv::Point(circular_blobs[i].x - circular_blobs[i].width / 2, circular_blobs[i].y - circular_blobs[i].height / 2),
-                    cv::Point(circular_blobs[i].x + circular_blobs[i].width / 2, circular_blobs[i].y + circular_blobs[i].height / 2),
-                    cv::Scalar(0, 0, 255), 2);
-
-                // Display circularity value
-                char text[32];
-                snprintf(text, sizeof(text), "%.2f", circular_blobs[i].circularity); // Assuming circularity is a field in OVC
-                cv::putText(frame,
-                    text,
-                    cv::Point(circular_blobs[i].x, circular_blobs[i].y - circular_blobs[i].height / 2 - 10), // Above the blob
-                    cv::FONT_HERSHEY_SIMPLEX,
-                    0.5, // Font scale
-                    cv::Scalar(0, 0, 255), // Red text to match bounding box
-                    1); // Thickness
-
-            }
-        }*/
 
 
 
